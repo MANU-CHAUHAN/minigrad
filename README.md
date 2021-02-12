@@ -4,7 +4,9 @@ A small autograd repo implementing backpropagation with ability to develop small
 
 ### TODO:
 
-1) Cover all operations:
+1) utils and visualizations
+
+2) Cover all operations:
 ```
 Relu, Log, Exp                  # unary ops
 Sum, Max                        # reduce ops (with axis argument)
@@ -13,4 +15,4 @@ Reshape, Transpose, Slice       # movement ops
 Matmul, Conv2D                  # processing ops
 ```
 
-2)
+3)
