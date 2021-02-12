@@ -2,9 +2,9 @@
 The main auto-grad engine of the entire grad system, implements backprop on DAG
 
 """
-import numpy as np 
+import numpy as np
 
-class Node:
+class Scalar:
 
     def __init__(self, value, previous_op=None, parent_nodes=[]):
         # make sure only int and float type values as used for initialization
@@ -19,9 +19,9 @@ class Node:
 
     def __add__(self, other_node):
         '''  for self + other_node calculation '''
-        other_node = other_node if isinstance(other_node, Node) else Node(other_node)
+        other_node = other_node if isinstance(other_node, Scalar) else Scalar(other_node)
 
-        out = Node(value=self.value + other_node.value, previous_op='+', parent_nodes=[self, other_node])
+        out = Scalar(value=self.value + other_node.value, previous_op='+', parent_nodes=[self, other_node])
 
         # derivative of output wrt `self`, z = x + y, (here x -> self), dz/dx = dx/dx + dy/dx = 1 + 0 = 1
         out.grad_wrt[self] = 1
@@ -38,9 +38,9 @@ class Node:
 
     def __sub__(self, other_node):
         ''' for self - other_node scenario '''
-        other_node = other_node if isinstance(other_node, Node) else Node(other_node)
+        other_node = other_node if isinstance(other_node, Scalar) else Scalar(other_node)
 
-        out = Node(self.value - other_node.value, '-', [self, other_node])
+        out = Scalar(self.value - other_node.value, '-', [self, other_node])
 
         # derivative of output wrt `self`, z = x - y, (here x -> self), dz/dx = dx/dx - dy/dx = 1 - 0 = 1
         out.grad_wrt[self] = 1           
@@ -52,9 +52,9 @@ class Node:
 
     def __rsub__(self, other_node):
         ''' for reverse subtraction, other_node - self scenario, this is different from self - other_node due to negative sign '''
-        other_node = other_node if isinstance(other_node, Node) else Node(other_node)
+        other_node = other_node if isinstance(other_node, Scalar) else Scalar(other_node)
 
-        out = Node(other_node.value - self.value, '-', [self, other_node])
+        out = Scalar(other_node.value - self.value, '-', [self, other_node])
 
         # derivative of output wrt `self`, z = y - x, (here x -> self), dz/dx = dy/dx - dx/dx = -1
         out.grad_wrt[self] = -1           
@@ -67,9 +67,9 @@ class Node:
     def __mul__(self, other_node):
         ''' for self * other_node scenario '''
 
-        other_node = other_node if isinstance(other_node, Node) else Node(other_node)
+        other_node = other_node if isinstance(other_node, Scalar) else Scalar(other_node)
 
-        out = Node(self.value * other_node.value, '*', [self, other_node])
+        out = Scalar(self.value * other_node.value, '*', [self, other_node])
 
         # derivative of output wrt `self`, z = x*y, (here x -> self), dz/dx = y*dx/dx = y*1 = y
         out.grad_wrt[self] = other_node.value           
@@ -89,7 +89,7 @@ class Node:
         ''' for self^power scenario '''
         assert isinstance(power, (int, float)), 'power must be either float or int'
 
-        out = Node(self.value ** power, f'^{power}', [self])
+        out = Scalar(self.value ** power, f'^{power}', [self])
 
         # derivative for z = x^power, dz/dx = power * x^power-1
         out.grad_wrt[self] = power * self.value ** (power - 1)
@@ -98,9 +98,9 @@ class Node:
 
     def __truediv__(self, other_node):
         ''' for self/other_node scenario '''
-        other_node = other_node if isinstance(other_node, Node) else Node(other_node)
+        other_node = other_node if isinstance(other_node, Scalar) else Scalar(other_node)
 
-        out = Node(self.value / other_node.value, '/', [self, other_node])
+        out = Scalar(self.value / other_node.value, '/', [self, other_node])
 
         # derivative of output wrt `self`, z = x/y, (here x -> self), dz/dx = (dx/dx)*1/y = 1/y
         out.grad_wrt[self] = 1 / other_node.value           
@@ -112,9 +112,9 @@ class Node:
 
     def __rtruediv__(self, other_node):
         ''' for other_node/self scenario '''
-        other_node = other_node if isinstance(other_node, Node) else Node(other_node)
+        other_node = other_node if isinstance(other_node, Scalar) else Scalar(other_node)
 
-        out = Node(other_node.value / self.value, '/', [self, other_node])
+        out = Scalar(other_node.value / self.value, '/', [self, other_node])
 
         # derivative of output wrt `self`, z = y/x, (here x -> self), dz/dx = y*(d[x^-1]/dx) = y*-1*x^-2
         out.grad_wrt[self] = -other_node.value * (self.value ** -2)          
@@ -134,7 +134,7 @@ class Node:
 
         clip_neg_vals = max(0, self.value)  # only use values > 0
 
-        out = Node(clip_neg_vals, 'ReLU', [self])
+        out = Scalar(clip_neg_vals, 'ReLU', [self])
 
         # derivative of relu function will be 0 or 1
         out.grad_wrt[self] = int(self.value > 0)
@@ -144,12 +144,12 @@ class Node:
     def sigmoid(self):
         ''' for using signoid activation function on node '''
         f = 1 / (1 + np.exp(-self.value))
-        out = Node(f, 'sigmoid', [self])
+        out = Scalar(f, 'sigmoid', [self])
         out.grad_wrt[self] = f * (1 - f)
         return out
 
     def __repr__(self):
-        return f'Node(value={self.value:.2f}, grad={self.grad:.2f}), prev_op={self.prev_op})'
+        return f'Scalar(value={self.value:.2f}, grad={self.grad:.2f}), prev_op={self.prev_op})'
 
 
     def backward(self):
@@ -178,9 +178,9 @@ class Node:
                 d_output/d_parent = d_output/d_node * d_node/d_parent
             '''
             for parent in node.parent_nodes:
-                dOutput_dNode = node.grad
-                dNode_dParent = node.grad_wrt[parent]
-                parent.grad += dOutput_dNode * dNode_dParent
+                dOutput_dScalar = node.grad
+                dScalar_dParent = node.grad_wrt[parent]
+                parent.grad += dOutput_dScalar * dScalar_dParent
 
         # build topology
         build_topology(self)
