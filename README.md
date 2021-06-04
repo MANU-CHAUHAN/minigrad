@@ -1,5 +1,5 @@
 # minigrad
-A small autograd repo implementing backpropagation with ability to develop small Neural Networks. Greatly inspired by Andrej Karpathy's  [minigrad](https://github.com/karpathy/micrograd)
+A small autograd repo implementing backpropagation with ability to develop small Neural Networks. Greatly inspired by Andrej Karpathy's  [micrograd](https://github.com/karpathy/micrograd)
 
 
 ### TODO:
